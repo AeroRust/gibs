@@ -1,5 +1,7 @@
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+UI inspired by [this](https://dribbble.com/shots/11893625-Sales-CRM-Dashboard-Design)
+
 ## Available Scripts
 
 In the project directory, you can run:

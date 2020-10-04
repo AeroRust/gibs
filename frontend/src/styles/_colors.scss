@@ -1,0 +1,34 @@
+$colors: () !default;
+$colors: map-merge(
+  (
+    // basic colors
+    white: #ffffff,
+    black: #000000,
+    // primary colors
+    dim: #3b3b44,
+    dark: #2e3035
+  ),
+  $colors
+);
+
+@mixin text-gibs($parent, $color) {
+  #{$parent} {
+    color: $color;
+  }
+}
+
+@mixin background-gibs($parent, $color) {
+  #{$parent} {
+    background: $color;
+  }
+}
+
+// text color classes mapping
+@each $color, $value in $colors {
+  @include text-gibs(".text-gibs-#{$color}", $value);
+}
+
+// background color classes mapping
+@each $color, $value in $colors {
+  @include background-gibs(".background-gibs-#{$color}", $value);
+}
