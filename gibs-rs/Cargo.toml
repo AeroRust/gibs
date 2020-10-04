@@ -9,3 +9,8 @@ edition = "2018"
 [dependencies]
 reqwest = { version = "0.10", features = ["json"] }
 url = "2.1"
+opencv = "^0.46.0"
+log = "*"
+uuid = { version = "0.8", features = ["v4"] }
+
+

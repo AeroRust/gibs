@@ -1,6 +1,8 @@
+use log::warn;
+use opencv::prelude::VideoWriterTrait;
 use reqwest::Client;
-use url::Url;
 use std::fmt;
+use url::Url;
 
 pub mod products;
 
@@ -79,26 +81,83 @@ impl fmt::Display for EPSG {
 
 pub struct GIBS {
     client: Client,
+    image_width: i32,
+    image_height: i32,
 }
 
 impl GIBS {
-    pub fn new() -> Self {
+    pub fn new(image_height: i32, image_width: i32) -> Self {
         Self {
             client: Client::new(),
+            image_height: image_height,
+            image_width: image_width,
         }
     }
 
-    pub fn get_url(&self, service: Service, epsg: EPSG, imagery_type: Imagery) -> Result<Url, url::ParseError> {
+    pub fn get_url(
+        &self,
+        service: Service,
+        epsg: EPSG,
+        imagery_type: Imagery,
+    ) -> Result<Url, url::ParseError> {
         // https://gibs.earthdata.nasa.gov/twms/epsg4326/best/twms.cgi?request=GetMap&layers=MODIS_Terra_CorrectedReflectance_TrueColor&srs=EPSG:4326&format=image/jpeg&styles=&time=2012-07-09&width=512&height=512&bbox=-18,27,-13.5,31.5
-        let url_string = format!("https://gibs.earthdata.nasa.gov/{}/epsg{}/{}/{}.sgi", service, epsg, imagery_type, service);
+        let url_string = format!(
+            "https://gibs.earthdata.nasa.gov/{}/epsg{}/{}/{}.sgi",
+            service, epsg, imagery_type, service
+        );
 
         Url::parse(&url_string)
+    }
+
+    /// Processes images to a single video file. Converted video file name is returned.
+    // ToDo: Create proper error handling,
+    // Use unique ID for generating converted video files,
+    // Set custom video writer having filename, width and height of images.
+    pub fn process_images(&self, images: Vec<image::Image>) -> Result<String, String> {
+        let uuid = uuid::Uuid::new_v4();
+        let file_name = format!("{}.mp4", uuid.to_string());
+
+        let video_writer = match opencv::videoio::VideoWriter::new(
+            file_name,
+            opencv::videoio::VideoWriter::fourcc('M', 'J', 'P', 'G'),
+            opencv::core::Size::new(self.image_width, self.image_height),
+            true,
+        ) {
+            Ok(e) => e,
+
+            Err(e) => {
+                warn!("Error creating Opencv videowriter, error: {}", e);
+                return "Error creating Opencv videowriter.";
+            }
+        };
+
+        for image in images.iter() {
+            match video_writer.write(image) {
+                Ok(_) => continue,
+
+                Err(e) => {
+                    warn!("Error writing to video writer, error: {}", e);
+                    return "Error writing to video writer.";
+                }
+            }
+        }
+
+        match video_writer.release() {
+            Ok(_) => {}
+
+            Err(e) => {
+                warn!("Error closing video writer, error: {}", e);
+                return "Error closing video writer.";
+            }
+        };
+
+        Ok(file_name)
     }
 }
 
 pub mod image {
     pub struct Image {
-        bytes: Vec<u8>,
+        bytes: Vec<f64>,
         image_type: Type,
     }
 
@@ -114,11 +173,11 @@ mod test {
 
     #[test]
     fn get_url_test() {
-        let gibs = GIBS::new();
+        let gibs = GIBS::new(500, 500);
 
-        let url_1 = gibs.get_url(Service::WMTS, GEOGRAPHIC, Imagery::Standard).expect("Should make");
-
-
+        let url_1 = gibs
+            .get_url(Service::WMTS, GEOGRAPHIC, Imagery::Standard)
+            .expect("Should make");
 
         println!("{}", url_1);
     }
